@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>美麗島｜雙階段互動式學習評量</title>
+  <style>
+    :root {
+      --stage1-primary: #2e7d32;
+      --stage1-light: #e8f5e9;
+      --stage1-accent: #66bb6a;
+      --stage2-primary: #1565c0;
+      --stage2-light: #e3f2fd;
+      --stage2-accent: #42a5f5;
+      --correct: #2e7d32;
+      --wrong: #c62828;
+      --warning: #ef6c00;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* 標楷體專用樣式（用於字形辨析與詩句） */
+    .kaiti {
+      font-family: "DFKai-SB", "BiauKai", "標楷體", serif;
+    }
+
+    /* 頂部導覽與頁面切換列 */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      padding: 12px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 12px;
+    }
+
+    .tab-btn {
+      border: 2px solid transparent;
+      padding: 10px 20px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tab-btn.stage1 {
+      background-color: var(--stage1-light);
+      color: var(--stage1-primary);
+      border-color: var(--stage1-accent);
+    }
+
+    .tab-btn.stage1.active {
+      background-color: var(--stage1-primary);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    }
+
+    .tab-btn.stage2 {
+      background-color: var(--stage2-light);
+      color: var(--stage2-primary);
+      border-color: var(--stage2-accent);
+    }
+
+    .tab-btn.stage2.active {
+      background-color: var(--stage2-primary);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+    }
+
+    /* 課堂計時器與狀態列 */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .timer-box {
+      background: #f1f5f9;
+      padding: 6px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+    }
+
+    .timer-btn {
+      background: #334155;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .score-badge {
+      background: #fef3c7;
+      color: #b45309;
+      border: 2px solid #f59e0b;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      font-size: 1.05rem;
+    }
+
+    /* 頁面容器 */
+    .page-container {
+      max-width: 1140px;
+      margin: 24px auto;
+      padding: 0 20px 60px;
+      display: none;
+    }
+
+    .page-container.active {
+      display: block;
+      animation: fadeIn 0.35s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 關卡標題橫幅 */
+    .stage-banner {
+      padding: 24px 28px;
+      border-radius: 20px;
+      color: white;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    }
+
+    .stage-banner.green {
+      background: linear-gradient(135deg, #2e7d32, #43a047);
+    }
+
+    .stage-banner.blue {
+      background: linear-gradient(135deg, #1565c0, #1e88e5);
+    }
+
+    .stage-banner h1 {
+      margin: 0 0 8px 0;
+      font-size: 1.75rem;
+    }
+
+    .stage-banner p {
+      margin: 0;
+      opacity: 0.95;
+      font-size: 1rem;
+    }
+
+    /* 題目卡片 */
+    .quiz-card {
+      background: var(--card-bg);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border: 2px solid #e2e8f0;
+    }
+
+    .quiz-card h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 2px dashed #e2e8f0;
+    }
+
+    .tag {
+      font-size: 0.85rem;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+
+    .tag.green { background: var(--stage1-light); color: var(--stage1-primary); }
+    .tag.blue { background: var(--stage2-light); color: var(--stage2-primary); }
+
+    /* 回饋訊息盒 */
+    .feedback-box {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      display: none;
+    }
+
+    .feedback-box.correct {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+      border-left: 5px solid #22c55e;
+    }
+
+    .feedback-box.wrong {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+      border-left: 5px solid #ef4444;
+    }
+
+    /* === 第一頁：部件分類拖曳題 === */
+    .word-cards-pool {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 16px 0;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 14px;
+      border: 2px dashed #cbd5e1;
+      min-height: 76px;
+      align-items: center;
+    }
+
+    .word-chip {
+      background: #ffffff;
+      border: 2px solid #64748b;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 1.25rem;
+      font-weight: 700;
+      cursor: grab;
+      user-select: none;
+      transition: all 0.2s;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+    }
+
+    .word-chip:hover {
+      transform: translateY(-2px);
+      border-color: var(--stage1-primary);
+    }
+
+    .word-chip.selected {
+      background: #fef08a;
+      border-color: #ca8a04;
+      transform: scale(1.05);
+    }
+
+    .word-chip.placed {
+      cursor: default;
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #166534;
+    }
+
+    .baskets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .basket {
+      background: #fffbeb;
+      border: 3px dashed #f59e0b;
+      border-radius: 18px;
+      padding: 20px;
+      min-height: 180px;
+      text-align: center;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .basket.dragover {
+      background: #fef3c7;
+      transform: scale(1.02);
+    }
+
+    .basket h3 {
+      margin: 0 0 8px 0;
+      color: #b45309;
+      font-size: 1.2rem;
+    }
+
+    .basket-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 14px;
+    }
+
+    /* 語境填空與選字 */
+    .cloze-sentence {
+      font-size: 1.3rem;
+      line-height: 2.3;
+      background: #f1f5f9;
+      padding: 18px 22px;
+      border-radius: 14px;
+      margin: 14px 0;
+    }
+
+    .select-blank {
+      font-size: 1.15rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 2px solid #94a3b8;
+      background: #ffffff;
+      color: #0f172a;
+      cursor: pointer;
+      margin: 0 4px;
+    }
+
+    .select-blank.correct-input {
+      border-color: #16a34a;
+      background-color: #dcfce7;
+      color: #166534;
+    }
+
+    .select-blank.wrong-input {
+      border-color: #dc2626;
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    /* 選擇題按鈕群 */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .option-btn {
+      background: #f8fafc;
+      border: 2px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .option-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .option-btn.correct {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #166534;
+    }
+
+    .option-btn.wrong {
+      background: #fee2e2;
+      border-color: #dc2626;
+      color: #991b1b;
+    }
+
+    /* === 第二頁：句子重組與展示牆 === */
+    .scramble-zone {
+      background: #f8fafc;
+      border: 2px dashed #94a3b8;
+      border-radius: 12px;
+      min-height: 64px;
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .chunk-btn {
+      background: #e0f2fe;
+      border: 2px solid #0284c7;
+      color: #0369a1;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    .chunk-btn:hover {
+      background: #bae6fd;
+    }
+
+    /* 造句輸入與展示牆 */
+    .wall-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .sticky-note {
+      background: #fef9c3;
+      border: 2px solid #fde047;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+      position: relative;
+    }
+
+    .sticky-note .student-tag {
+      font-size: 0.85rem;
+      color: #854d0e;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    /* 四面向配對題 */
+    .matching-container {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 680px) {
+      .matching-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .match-left, .match-right {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .match-item {
+      padding: 14px 18px;
+      border-radius: 12px;
+      border: 2px solid #cbd5e1;
+      background: #ffffff;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 1.05rem;
+      transition: all 0.2s;
+    }
+
+    .match-item.active {
+      border-color: #2563eb;
+      background: #dbeafe;
+      transform: scale(1.02);
+    }
+
+    .match-item.paired {
+      cursor: default;
+      border-color: #16a34a;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    /* 終極魔王關：左右分欄閱讀 */
+    .boss-layout {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .boss-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .poem-viewer {
+      background: #fffdf9;
+      border: 3px solid #93c5fd;
+      border-radius: 16px;
+      padding: 22px;
+      position: sticky;
+      top: 84px;
+      box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.06);
+    }
+
+    .poem-line {
+      padding: 8px 12px;
+      margin: 4px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+    }
+
+    .poem-line:hover {
+      background: #eff6ff;
+    }
+
+    .poem-line.underlined-correct {
+      background: #fef08a;
+      border-bottom: 3px wavy #16a34a;
+      font-weight: 700;
+      color: #14532d;
+    }
+
+    .poem-line.underlined-bonus {
+      background: #e0e7ff;
+      border-bottom: 3px wavy #4f46e5;
+      font-weight: 700;
+      color: #312e81;
+    }
+
+    .poem-line.underlined-wrong {
+      background: #fee2e2;
+      border-bottom: 3px solid #dc2626;
+    }
+
+    .action-btn {
+      background: var(--stage2-primary);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .action-btn.green {
+      background: var(--stage1-primary);
+    }
+
+    .action-btn:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .checkbox-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 14px 0;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: #f8fafc;
+      border: 2px solid #cbd5e1;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .checkbox-item input {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 頂部切換導覽列 -->
+  <header>
+    <div class="nav-tabs">
+      <button class="tab-btn stage1 active" onclick="switchPage(1)">
+        🟢 第一頁：字詞守衛戰（8分鐘）
+      </button>
+      <button class="tab-btn stage2" onclick="switchPage(2)">
+        🔵 第二頁：美麗島大冒險（15分鐘）
+      </button>
+    </div>
+
+    <div class="status-bar">
+      <div class="timer-box">
+        ⏱️ 剩餘時間：<span id="timer-display">08:00</span>
+        <button class="timer-btn" onclick="toggleTimer()" id="timer-btn">開始計時</button>
+        <button class="timer-btn" onclick="resetTimer()">重設</button>
+      </div>
+      <div class="score-badge">
+        ⭐ 總積分：<span id="score-display">0</span> 分
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================
+       🟢 第一頁：第一階段評量（第一節課最後 8 分鐘）
+       ========================================================= -->
+  <main id="page-1" class="page-container active">
+    <div class="stage-banner green">
+      <h1>🟢 第一階段評量：【第一關：字詞守衛戰】</h1>
+      <p>評量目標：檢核本課生字字音字形、形近字部件辨析（「舌」vs.「舌（千+口）」）與基礎課文詞義理解。</p>
+    </div>
+
+    <!-- 第一大題：部件分類拖曳題 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag green">任務一</span>
+        部件分類拖曳與語境填空（對應課本 P.11、習作 P.5「我會辨字」）
+      </h2>
+      <p>💡 <strong>玩法說明：</strong>請將下方的語詞字卡<strong>拖曳</strong>（或<strong>先點字卡、再點籃子</strong>）放入正確的籃子中，接著完成下方的句子填空！</p>
+
+      <!-- 字卡池 -->
+      <div class="word-cards-pool" id="radical-pool">
+        <div class="word-chip kaiti" draggable="true" data-type="heng" data-word="甜（甜點、甜蜜）" onclick="selectChip(this)">甜（甜點、甜蜜）</div>
+        <div class="word-chip kaiti" draggable="true" data-type="pie" data-word="話（童話、說話）" onclick="selectChip(this)">話（童話、說話）</div>
+        <div class="word-chip kaiti" draggable="true" data-type="pie" data-word="活（生活、活動）" onclick="selectChip(this)">活（生活、活動）</div>
+      </div>
+
+      <!-- 兩個籃子 -->
+      <div class="baskets-grid">
+        <div class="basket" id="basket-heng" ondragover="allowDrop(event)" ondrop="dropChip(event, 'heng')" onclick="placeInBasket('heng')">
+          <h3>🧺 左籃：第一筆是「橫」（舌）</h3>
+          <p style="font-size:0.9rem; color:#78350f; margin:0;">提示：與「舌頭」品嘗味道有關</p>
+          <div class="basket-items" id="items-heng"></div>
+        </div>
+
+        <div class="basket" id="basket-pie" ondragover="allowDrop(event)" ondrop="dropChip(event, 'pie')" onclick="placeInBasket('pie')">
+          <h3>🧺 右籃：第一筆是「撇」（舌／千+口）</h3>
+          <p style="font-size:0.9rem; color:#78350f; margin:0;">提示：右部件第一筆是撇</p>
+          <div class="basket-items" id="items-pie"></div>
+        </div>
+      </div>
+
+      <div id="feedback-radical" class="feedback-box"></div>
+
+      <!-- 題目語境填入國字 -->
+      <div style="margin-top: 22px;">
+        <p style="font-weight:700; margin-bottom:6px;">✏️ 請根據上方辨字結果，選出正確的國字填入語境中：</p>
+        <div class="cloze-sentence kaiti">
+          「（
+          <select class="select-blank" id="c1-1" onchange="checkRadicalCloze()">
+            <option value="">請選字</option>
+            <option value="童">童</option>
+            <option value="同">同</option>
+          </select>
+          ）（
+          <select class="select-blank" id="c1-2" onchange="checkRadicalCloze()">
+            <option value="">請選字</option>
+            <option value="話">話（第一筆是撇）</option>
+            <option value="甜">甜（第一筆是橫）</option>
+          </select>
+          ）中，主角生（
+          <select class="select-blank" id="c1-3" onchange="checkRadicalCloze()">
+            <option value="">請選字</option>
+            <option value="活">活（第一筆是撇）</option>
+            <option value="括">括</option>
+          </select>
+          ）在（
+          <select class="select-blank" id="c1-4" onchange="checkRadicalCloze()">
+            <option value="">請選字</option>
+            <option value="甜">甜（第一筆是橫）</option>
+            <option value="話">話（第一筆是撇）</option>
+          </select>
+          ）點做成的房子裡。」
+        </div>
+        <div id="feedback-radical-cloze" class="feedback-box"></div>
+      </div>
+    </section>
+
+    <!-- 第二大題：語境選字與注音填空題 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag green">任務二</span>
+        語境選字與注音填空題（對應習作 P.4～5 第一大題）
+      </h2>
+      <p>💡 請根據前後文語境，從下拉選單中選出正確的<strong>國字與注音</strong>：</p>
+
+      <!-- 第 1 題 -->
+      <div class="cloze-sentence">
+        <strong>第 1 題：</strong>吃飯時不說話，避免（
+        <select class="select-blank" data-ans="唾 ㄊㄨㄛˋ">
+          <option value="">選字與注音</option>
+          <option value="垂 ㄔㄨㄟˊ">垂 ㄔㄨㄟˊ</option>
+          <option value="唾 ㄊㄨㄛˋ">唾 ㄊㄨㄛˋ</option>
+          <option value="睡 ㄕㄨㄟˋ">睡 ㄕㄨㄟˋ</option>
+        </select>
+        ）（
+        <select class="select-blank" data-ans="沫 ㄇㄛˋ">
+          <option value="">選字與注音</option>
+          <option value="抹 ㄇㄛˇ">抹 ㄇㄛˇ</option>
+          <option value="沫 ㄇㄛˋ">沫 ㄇㄛˋ</option>
+          <option value="末 ㄇㄛˋ">末 ㄇㄛˋ</option>
+        </select>
+        ）噴濺，是（
+        <select class="select-blank" data-ans="衛 ㄨㄟˋ">
+          <option value="">選字與注音</option>
+          <option value="街 ㄐㄧㄝ">街 ㄐㄧㄝ</option>
+          <option value="衛 ㄨㄟˋ">衛 ㄨㄟˋ</option>
+          <option value="術 ㄕㄨˋ">術 ㄕㄨˋ</option>
+        </select>
+        ）生保健的好習慣。
+      </div>
+
+      <!-- 第 2 題 -->
+      <div class="cloze-sentence">
+        <strong>第 2 題：</strong>軍（
+        <select class="select-blank" data-ans="隊 ㄉㄨㄟˋ">
+          <option value="">選字與注音</option>
+          <option value="隊 ㄉㄨㄟˋ">隊 ㄉㄨㄟˋ</option>
+          <option value="墜 ㄓㄨㄟˋ">墜 ㄓㄨㄟˋ</option>
+        </select>
+        ）中的每位士兵，都盡（
+        <select class="select-blank" data-ans="忠 ㄓㄨㄥ">
+          <option value="">選字與注音</option>
+          <option value="忠 ㄓㄨㄥ">忠 ㄓㄨㄥ</option>
+          <option value="中 ㄓㄨㄥ">中 ㄓㄨㄥ</option>
+        </select>
+        ）職守的（
+        <select class="select-blank" data-ans="守 ㄕㄡˇ">
+          <option value="">選字與注音</option>
+          <option value="手 ㄕㄡˇ">手 ㄕㄡˇ</option>
+          <option value="守 ㄕㄡˇ">守 ㄕㄡˇ</option>
+        </select>
+        ）護臺（
+        <select class="select-blank" data-ans="灣 ㄨㄢ">
+          <option value="">選字與注音</option>
+          <option value="灣 ㄨㄢ">灣 ㄨㄢ</option>
+          <option value="彎 ㄨㄢ">彎 ㄨㄢ</option>
+        </select>
+        ）（
+        <select class="select-blank" data-ans="島 ㄉㄠˇ">
+          <option value="">選字與注音</option>
+          <option value="鳥 ㄋㄧㄠˇ">鳥 ㄋㄧㄠˇ</option>
+          <option value="島 ㄉㄠˇ">島 ㄉㄠˇ</option>
+        </select>
+        ）上的人民。
+      </div>
+
+      <!-- 第 3 題 -->
+      <div class="cloze-sentence">
+        <strong>第 3 題：</strong>喝薑茶可以去除（
+        <select class="select-blank" data-ans="寒 ㄏㄢˊ">
+          <option value="">選字與注音</option>
+          <option value="寒 ㄏㄢˊ">寒 ㄏㄢˊ</option>
+          <option value="塞 ㄙㄞ">塞 ㄙㄞ</option>
+        </select>
+        ）氣，溫暖身體，加入（
+        <select class="select-blank" data-ans="椰 ㄧㄝˊ">
+          <option value="">選字與注音</option>
+          <option value="椰 ㄧㄝˊ">椰 ㄧㄝˊ</option>
+          <option value="耶 ㄧㄝ">耶 ㄧㄝ</option>
+        </select>
+        ）（
+        <select class="select-blank" data-ans="糖 ㄊㄤˊ">
+          <option value="">選字與注音</option>
+          <option value="塘 ㄊㄤˊ">塘 ㄊㄤˊ</option>
+          <option value="糖 ㄊㄤˊ">糖 ㄊㄤˊ</option>
+          <option value="搪 ㄊㄤˊ">搪 ㄊㄤˊ</option>
+        </select>
+        ）後，帶著些微（
+        <select class="select-blank" data-ans="香 ㄒㄧㄤ">
+          <option value="">選字與注音</option>
+          <option value="香 ㄒㄧㄤ">香 ㄒㄧㄤ</option>
+          <option value="鄉 ㄒㄧㄤ">鄉 ㄒㄧㄤ</option>
+        </select>
+        ）（
+        <select class="select-blank" data-ans="蕉 ㄐㄧㄠ">
+          <option value="">選字與注音</option>
+          <option value="焦 ㄐㄧㄠ">焦 ㄐㄧㄠ</option>
+          <option value="蕉 ㄐㄧㄠ">蕉 ㄐㄧㄠ</option>
+          <option value="瞧 ㄑㄧㄠˊ">瞧 ㄑㄧㄠˊ</option>
+        </select>
+        ）氣味，就更好喝了。
+      </div>
+
+      <button class="action-btn green" onclick="checkAllVocabSelects()">✅ 批改選字與注音填空</button>
+      <div id="feedback-vocab" class="feedback-box"></div>
+    </section>
+
+    <!-- 第三大題：課文詞義快問快答 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag green">任務三</span>
+        課文詞義快問快答（對應習作 P.7 第四大題第 1 題）
+      </h2>
+      <p style="font-size:1.2rem; font-weight:700;">
+        ❓ 題目：「吐著白色的唾沫的海」中，「唾沫」在課文裡是指什麼？
+      </p>
+      <div class="options-grid" id="q-sea-foam">
+        <button class="option-btn" onclick="checkSeaFoam(this, false)">① 口水</button>
+        <button class="option-btn" onclick="checkSeaFoam(this, false)">② 白沙</button>
+        <button class="option-btn" onclick="checkSeaFoam(this, false)">③ 魚群</button>
+        <button class="option-btn" onclick="checkSeaFoam(this, true)">④ 浪花</button>
+      </div>
+      <div id="feedback-sea-foam" class="feedback-box"></div>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       🔵 第二頁：第二階段評量（第二節課最後 15 分鐘）
+       ========================================================= -->
+  <main id="page-2" class="page-container">
+    <div class="stage-banner blue">
+      <h1>🔵 第二階段評量：【第二關：美麗島大冒險】</h1>
+      <p>評量目標：檢核「語詞重複句型」、「課文深層推論與四面向整合」、以及「動態描寫與堆疊語詞」的跨域遷移應用。</p>
+    </div>
+
+    <!-- 第一大題：句意理解二選一 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag blue">冒險一</span>
+        句意理解二選一（對應課本 P.13、習作 P.6 第二大題）
+      </h2>
+      <div style="background:#eff6ff; border-left:5px solid #3b82f6; padding:12px 16px; border-radius:10px; margin-bottom:16px;">
+        <strong>🌟 例題示範：</strong>題幹「小朋友很健康」 ➔ 應選<strong>「小朋友像健康的牛一樣的健康。」</strong>（前後重複相同形容詞「健康」，強化語意並產生節奏感！）
+      </div>
+
+      <!-- 第 1 題 -->
+      <div style="margin-bottom: 20px;">
+        <p style="font-size:1.15rem; font-weight:700;">第 1 題：題幹「姐姐很安靜」</p>
+        <div class="options-grid">
+          <button class="option-btn" onclick="checkSentencePattern(this, 1, true)">
+            (A) 姐姐像安靜的貓咪一樣的安靜。
+          </button>
+          <button class="option-btn" onclick="checkSentencePattern(this, 1, false)">
+            (B) 姐姐像安靜的貓咪一樣的溫柔。
+          </button>
+        </div>
+        <div id="feedback-pattern-1" class="feedback-box"></div>
+      </div>
+
+      <!-- 第 2 題 -->
+      <div>
+        <p style="font-size:1.15rem; font-weight:700;">第 2 題：題幹「爸爸很高大」</p>
+        <div class="options-grid">
+          <button class="option-btn" onclick="checkSentencePattern(this, 2, false)">
+            (A) 爸爸像強壯的樹一樣的強壯。
+          </button>
+          <button class="option-btn" onclick="checkSentencePattern(this, 2, true)">
+            (B) 爸爸像高大的樹一樣的高大。
+          </button>
+        </div>
+        <div id="feedback-pattern-2" class="feedback-box"></div>
+      </div>
+    </section>
+
+    <!-- 第二大題：語詞造句重組／輸入題 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag blue">冒險二</span>
+        語詞造句重組與發表展示牆（對應課本 P.7、習作 P.6 第三大題）
+      </h2>
+      <p>
+        📘 <strong>評量詞語：【成群結隊】</strong>（意思：一群群的人或動物集合在一起行動）。
+      </p>
+
+      <!-- 挑戰 A：語塊重組 1 -->
+      <div style="margin-bottom: 20px;">
+        <p style="font-weight:700;">🧩 句子語塊重組（一）：請依序點擊下方語塊，排出通順的句子！</p>
+        <div class="scramble-zone" id="scramble-ans-1"></div>
+        <div class="scramble-zone" id="scramble-pool-1">
+          <button class="chunk-btn" onclick="moveChunk(this, 1)">衝出教室。</button>
+          <button class="chunk-btn" onclick="moveChunk(this, 1)">放學鐘聲一響，</button>
+          <button class="chunk-btn" onclick="moveChunk(this, 1)">成群結隊的</button>
+          <button class="chunk-btn" onclick="moveChunk(this, 1)">學生們就</button>
+        </div>
+        <button class="action-btn" onclick="checkScramble(1, '放學鐘聲一響，學生們就成群結隊的衝出教室。')">檢查句子（一）</button>
+        <button class="action-btn" style="background:#64748b;" onclick="resetScramble(1)">重新排列</button>
+        <div id="feedback-scramble-1" class="feedback-box"></div>
+      </div>
+
+      <!-- 挑戰 B：語塊重組 2 -->
+      <div style="margin-bottom: 24px;">
+        <p style="font-weight:700;">🧩 句子語塊重組（二）：請依序點擊下方語塊，排出通順的句子！</p>
+        <div class="scramble-zone" id="scramble-ans-2"></div>
+        <div class="scramble-zone" id="scramble-pool-2">
+          <button class="chunk-btn" onclick="moveChunk(this, 2)">在枝頭盛開。</button>
+          <button class="chunk-btn" onclick="moveChunk(this, 2)">成群結隊的</button>
+          <button class="chunk-btn" onclick="moveChunk(this, 2)">春天來了，</button>
+          <button class="chunk-btn" onclick="moveChunk(this, 2)">美麗的花朵</button>
+        </div>
+        <button class="action-btn" onclick="checkScramble(2, '春天來了，美麗的花朵成群結隊的在枝頭盛開。')">檢查句子（二）</button>
+        <button class="action-btn" style="background:#64748b;" onclick="resetScramble(2)">重新排列</button>
+        <div id="feedback-scramble-2" class="feedback-box"></div>
+      </div>
+
+      <!-- 開放打字／語音輸入造句展示牆 -->
+      <div style="background:#f8fafc; padding:18px; border-radius:14px; border:2px solid #cbd5e1;">
+        <h3 style="margin-top:0;">🎤 創意造句發表（可打字或語音輸入，傳送至全班展示牆）</h3>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+          <input type="text" id="student-name" placeholder="座號／姓名（例：05 小明）" style="padding:10px; border-radius:8px; border:2px solid #cbd5e1; font-size:1rem; width:210px;">
+          <input type="text" id="student-sentence" placeholder="請用「成群結隊」造一個句子……" style="flex:1; min-width:260px; padding:10px; border-radius:8px; border:2px solid #cbd5e1; font-size:1rem;">
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="action-btn" style="background:#0d9488;" onclick="startVoiceInput()">🎙️ 語音輸入造句</button>
+          <button class="action-btn" onclick="postToWall()">🚀 傳送至教師端展示牆</button>
+        </div>
+        <div id="feedback-wall" class="feedback-box"></div>
+
+        <!-- 展示牆貼紙區 -->
+        <div class="wall-grid" id="sentence-wall">
+          <div class="sticky-note">
+            <div class="student-tag">📌 範例展示</div>
+            <div>傍晚時，小鳥<strong>成群結隊</strong>的飛回樹林裡休息。</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 第三大題：閱讀小偵探：詩句推論與四面向配對 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag blue">冒險三</span>
+        閱讀小偵探：詩句推論與四面向配對（對應習作 P.7 第四大題第 2、3 題）
+      </h2>
+
+      <!-- 單選題 -->
+      <div style="margin-bottom:24px;">
+        <p style="font-size:1.15rem; font-weight:700;">
+          🕵️ 單選題：「伸著大手掌的椰子樹／緊緊的拉住親愛的春天」是什麼意思？
+        </p>
+        <div class="options-grid">
+          <button class="option-btn" onclick="checkCoconut(this, false)">① 椰子樹的大葉子可以拉住春天</button>
+          <button class="option-btn" onclick="checkCoconut(this, true)">② 美麗島整年都像春天一樣暖和</button>
+          <button class="option-btn" onclick="checkCoconut(this, false)">③ 椰子樹要選在春天的時候種植</button>
+          <button class="option-btn" onclick="checkCoconut(this, false)">④ 美麗島伸著大手掌抓住椰子樹</button>
+        </div>
+        <div id="feedback-coconut" class="feedback-box"></div>
+      </div>
+
+      <!-- 四面向連線配對題 -->
+      <div>
+        <p style="font-size:1.15rem; font-weight:700;">
+          🔗 四面向連線配對題：為什麼作者形容臺灣像童話一樣美麗呢？請先點擊左側【特色面向】，再點擊右側對應的【課文描寫】完成配對！
+        </p>
+        <div class="matching-container">
+          <div class="match-left" id="match-left">
+            <div class="match-item" data-key="env" onclick="selectMatchLeft(this)">🏝️ 【環境】</div>
+            <div class="match-item" data-key="cli" onclick="selectMatchLeft(this)">☀️ 【氣候】</div>
+            <div class="match-item" data-key="peo" onclick="selectMatchLeft(this)">👧 【居民】</div>
+            <div class="match-item" data-key="pro" onclick="selectMatchLeft(this)">🍌 【物產】</div>
+          </div>
+          <div class="match-right" id="match-right">
+            <div class="match-item" data-key="peo" onclick="selectMatchRight(this)">小朋友像牛一樣健康、像雲雀一樣快樂，小妹妹在媽媽懷裡微笑。</div>
+            <div class="match-item" data-key="env" onclick="selectMatchRight(this)">藍色的大海像忠實的衛兵守衛著島嶼。</div>
+            <div class="match-item" data-key="pro" onclick="selectMatchRight(this)">盛產香甜的香蕉、鳳梨，更是甜蜜的「糖的王國」。</div>
+            <div class="match-item" data-key="cli" onclick="selectMatchRight(this)">溫暖如春，椰子樹伸著大手掌、花朵永遠成群結隊盛開。</div>
+          </div>
+        </div>
+        <div id="feedback-matching" class="feedback-box"></div>
+      </div>
+    </section>
+
+    <!-- 第四大題：終極魔王關：楊喚《七彩的虹》遷移實戰 -->
+    <section class="quiz-card">
+      <h2>
+        <span class="tag blue">終極魔王關</span>
+        楊喚《七彩的虹》遷移實戰（對應課本 P.11～12、習作 P.8～9 第五大題）
+      </h2>
+
+      <div class="boss-layout">
+        <!-- 左側：子題 A 與 子題 B 引導 -->
+        <div>
+          <!-- 子題 A -->
+          <div style="margin-bottom:24px;">
+            <h3 style="margin-top:0;">⚡ 子題 A（複選題——辨識動態描寫）</h3>
+            <p>請問下列哪些短語運用了<strong>「動態描寫」</strong>（加入了動作，讓畫面動起來）？（請勾選所有正確答案）</p>
+            <div class="checkbox-list" id="dynamic-checkboxes">
+              <label class="checkbox-item"><input type="checkbox" value="1"> 飛跑著的烏雲</label>
+              <label class="checkbox-item"><input type="checkbox" value="2"> 骯髒的山谷</label>
+              <label class="checkbox-item"><input type="checkbox" value="3"> 天上的宮廷</label>
+              <label class="checkbox-item"><input type="checkbox" value="4"> 美麗的長彩帶</label>
+              <label class="checkbox-item"><input type="checkbox" value="5"> 飛滿了塵土的天空</label>
+            </div>
+            <button class="action-btn" onclick="checkDynamicWords()">✅ 送出子題 A 答案</button>
+            <div id="feedback-dynamic" class="feedback-box"></div>
+          </div>
+
+          <!-- 子題 B -->
+          <div>
+            <h3>🎨 子題 B（點擊詩句畫線題——辨識堆疊語詞）</h3>
+            <p>
+              詩歌中使用<strong>「堆疊的語詞」</strong>（連續多個「……的」）加強了形容的效果。<br>
+              👉 <strong>請直接點擊右側《七彩的虹》詩歌中，運用了這種手法的目標詩句！</strong>（共有 2 處主要目標句，另有 1 處進階加分句！）
+            </p>
+            <div id="feedback-poem-click" class="feedback-box"></div>
+          </div>
+        </div>
+
+        <!-- 右側：《七彩的虹》全文互動區 -->
+        <div class="poem-viewer kaiti">
+          <h3 style="margin-top:0; text-align:center; color:#1e3a8a; font-size:1.45rem;">《七彩的虹》 楊喚</h3>
+          <p style="text-align:center; font-family:sans-serif; font-size:0.88rem; color:#475569; margin-top:-8px;">
+            （請點擊下方運用了「堆疊語詞」的詩句來畫線！）
+          </p>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">接到太陽國王的大掃除命令，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">小雨點們就都坐上飛跑著的烏雲，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">賽跑著離開了天上的宮廷。</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">他們給稻田和小河加足了水，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">他們給骯髒的山谷洗過了澡，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'bonus')">就又來洗淨了清道夫永遠也掃不完的城市，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'target1')">也洗淨了悶熱的飛滿了塵土的天空。</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">太陽國王為了獎賞他們，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'normal')">送給他們一條美麗的長彩帶，</div>
+          <div class="poem-line" onclick="clickPoemLine(this, 'target2')">那就是掛在明亮的雨後的天空中的／紅、橙、黃、綠、青、藍、紫的七彩的虹。</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    /* =========================================================
+       音效合成器（Web Audio API，免外部音檔）
+       ========================================================= */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTone(type) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'correct') {
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.35);
+      } else {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(180, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      }
+    }
+
+    /* =========================================================
+       計分與頁面切換、計時器
+       ========================================================= */
+    let totalScore = 0;
+    const awardedFlags = {};
+
+    function addScore(key, points) {
+      if (!awardedFlags[key]) {
+        awardedFlags[key] = true;
+        totalScore += points;
+        document.getElementById('score-display').textContent = totalScore;
+      }
+    }
+
+    let currentStage = 1;
+    let timerSeconds = 8 * 60;
+    let timerInterval = null;
+
+    function switchPage(stageNum) {
+      currentStage = stageNum;
+      document.getElementById('page-1').classList.toggle('active', stageNum === 1);
+      document.getElementById('page-2').classList.toggle('active', stageNum === 2);
+      document.querySelectorAll('.tab-btn.stage1')[0].classList.toggle('active', stageNum === 1);
+      document.querySelectorAll('.tab-btn.stage2')[0].classList.toggle('active', stageNum === 2);
+      resetTimer();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateTimerDisplay() {
+      const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+      const s = String(timerSeconds % 60).padStart(2, '0');
+      document.getElementById('timer-display').textContent = `${m}:${s}`;
+    }
+
+    function toggleTimer() {
+      const btn = document.getElementById('timer-btn');
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        btn.textContent = '繼續計時';
+      } else {
+        btn.textContent = '暫停';
+        timerInterval = setInterval(() => {
+          if (timerSeconds > 0) {
+            timerSeconds--;
+            updateTimerDisplay();
+          } else {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            btn.textContent = '時間到！';
+            playTone('correct');
+          }
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+      timerSeconds = currentStage === 1 ? 8 * 60 : 15 * 60;
+      document.getElementById('timer-btn').textContent = '開始計時';
+      updateTimerDisplay();
+    }
+
+    /* =========================================================
+       第一關：部件分類拖曳與點擊雙模態支援
+       ========================================================= */
+    let activeChip = null;
+
+    document.querySelectorAll('.word-chip').forEach(chip => {
+      chip.addEventListener('dragstart', e => {
+        activeChip = chip;
+        e.dataTransfer.setData('text/plain', chip.dataset.type);
+      });
+    });
+
+    function selectChip(chip) {
+      if (chip.classList.contains('placed')) return;
+      document.querySelectorAll('.word-chip').forEach(c => c.classList.remove('selected'));
+      activeChip = chip;
+      chip.classList.add('selected');
+    }
+
+    function allowDrop(e) {
+      e.preventDefault();
+    }
+
+    function dropChip(e, basketType) {
+      e.preventDefault();
+      placeInBasket(basketType);
+    }
+
+    function placeInBasket(basketType) {
+      if (!activeChip || activeChip.classList.contains('placed')) return;
+      const chipType = activeChip.dataset.type;
+      const fb = document.getElementById('feedback-radical');
+
+      if (chipType === basketType) {
+        playTone('correct');
+        activeChip.classList.remove('selected');
+        activeChip.classList.add('placed');
+        activeChip.draggable = false;
+        document.getElementById(`items-${basketType}`).appendChild(activeChip);
+        addScore('chip-' + activeChip.dataset.word, 5);
+
+        if (basketType === 'heng') {
+          fb.className = 'feedback-box correct';
+          fb.innerHTML = '🎉 配對正確！「甜、甜點、甜蜜」➔ <strong>第一筆是橫（舌）</strong>，因為是用舌頭品嘗甜味喔！';
+        } else {
+          fb.className = 'feedback-box correct';
+          fb.innerHTML = '🎉 配對正確！「話（童話、說話）、活（生活、活動）」➔ <strong>右部件第一筆是撇</strong>，千萬別寫成橫囉！';
+        }
+        activeChip = null;
+      } else {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        if (chipType === 'heng') {
+          fb.innerHTML = '💡 再想一想！「甜」跟品嘗味道的「舌頭」有關，第一筆應該是「橫」喔！';
+        } else {
+          fb.innerHTML = '💡 再想一想！「話、活」的右部件（千+口）第一筆是「撇」，不是橫喔！';
+        }
+      }
+    }
+
+    function checkRadicalCloze() {
+      const v1 = document.getElementById('c1-1').value;
+      const v2 = document.getElementById('c1-2').value;
+      const v3 = document.getElementById('c1-3').value;
+      const v4 = document.getElementById('c1-4').value;
+      if (!v1 || !v2 || !v3 || !v4) return;
+
+      const fb = document.getElementById('feedback-radical-cloze');
+      if (v1 === '童' && v2 === '話' && v3 === '活' && v4 === '甜') {
+        playTone('correct');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '🌟 太棒了！完整句子：「（童）（話）中，主角生（活）在（甜）點做成的房子裡。」全部答對！';
+        addScore('radical-cloze', 10);
+      } else {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 還有字填錯囉！請檢查：「童話」、「生活」右部件第一筆是撇；「甜點」第一筆是橫。';
+      }
+    }
+
+    /* =========================================================
+       第一關：語境選字與注音填空批改
+       ========================================================= */
+    function checkAllVocabSelects() {
+      const selects = document.querySelectorAll('.select-blank[data-ans]');
+      let allCorrect = true;
+      let correctCount = 0;
+
+      selects.forEach(sel => {
+        if (sel.value === sel.dataset.ans) {
+          sel.classList.remove('wrong-input');
+          sel.classList.add('correct-input');
+          correctCount++;
+        } else {
+          sel.classList.remove('correct-input');
+          sel.classList.add('wrong-input');
+          allCorrect = false;
+        }
+      });
+
+      const fb = document.getElementById('feedback-vocab');
+      if (allCorrect) {
+        playTone('correct');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = `🎉 恭喜守衛成功！13 個生字與注音（唾沫、衛生、軍隊、盡忠、守護、臺灣島、寒氣、椰糖、香蕉）全部答對！`;
+        addScore('vocab-all', 20);
+      } else {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = `💡 目前答對 ${correctCount} / ${selects.length} 格。紅色框框代表形近字或注音選錯囉（例如：唾 vs. 垂/睡、沫 vs. 抹、島 vs. 鳥、糖 vs. 塘、蕉 vs. 焦），請再修正！`;
+      }
+    }
+
+    /* =========================================================
+       第一關：課文詞義快問快答
+       ========================================================= */
+    function checkSeaFoam(btn, isCorrect) {
+      const container = document.getElementById('q-sea-foam');
+      container.querySelectorAll('.option-btn').forEach(b => b.classList.remove('correct', 'wrong'));
+      const fb = document.getElementById('feedback-sea-foam');
+
+      if (isCorrect) {
+        playTone('correct');
+        btn.classList.add('correct');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '🎉 答對了！「吐著白色的唾沫的海」就是把大海拍打岸邊激起的白色「④ 浪花」比喻成唾沫！';
+        addScore('sea-foam', 10);
+      } else {
+        playTone('wrong');
+        btn.classList.add('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 答錯即時提示：「想想看，大海拍打岸邊時，海面上白白像泡泡的東西是什麼呢？」';
+      }
+    }
+
+    /* =========================================================
+       第二關：句意理解二選一
+       ========================================================= */
+    function checkSentencePattern(btn, qNum, isCorrect) {
+      const parent = btn.parentElement;
+      parent.querySelectorAll('.option-btn').forEach(b => b.classList.remove('correct', 'wrong'));
+      const fb = document.getElementById(`feedback-pattern-${qNum}`);
+
+      if (isCorrect) {
+        playTone('correct');
+        btn.classList.add('correct');
+        fb.className = 'feedback-box correct';
+        if (qNum === 1) {
+          fb.innerHTML = '🎉 正確！前後都使用「安靜」來呼應題幹「姐姐很安靜」，讀起來更有節奏感！';
+        } else {
+          fb.innerHTML = '🎉 正確！前後都使用「高大」來呼應題幹「爸爸很高大」，強化了高大的形象！';
+        }
+        addScore('pattern-' + qNum, 10);
+      } else {
+        playTone('wrong');
+        btn.classList.add('wrong');
+        fb.className = 'feedback-box wrong';
+        if (qNum === 1) {
+          fb.innerHTML = '💡 再想想：這個選項前後形容詞不一致（安靜 vs. 溫柔），而且偏離了題幹「很安靜」的原意喔！';
+        } else {
+          fb.innerHTML = '💡 再想想：題幹強調的是爸爸很「高大」而非「強壯」喔！';
+        }
+      }
+    }
+
+    /* =========================================================
+       第二關：句子語塊重組与語音/打字造句牆
+       ========================================================= */
+    function moveChunk(btn, groupNum) {
+      const ansZone = document.getElementById(`scramble-ans-${groupNum}`);
+      const poolZone = document.getElementById(`scramble-pool-${groupNum}`);
+      if (btn.parentElement === poolZone) {
+        ansZone.appendChild(btn);
+      } else {
+        poolZone.appendChild(btn);
+      }
+    }
+
+    function resetScramble(groupNum) {
+      const ansZone = document.getElementById(`scramble-ans-${groupNum}`);
+      const poolZone = document.getElementById(`scramble-pool-${groupNum}`);
+      Array.from(ansZone.children).forEach(ch => poolZone.appendChild(ch));
+      document.getElementById(`feedback-scramble-${groupNum}`).className = 'feedback-box';
+    }
+
+    function checkScramble(groupNum, targetSentence) {
+      const ansZone = document.getElementById(`scramble-ans-${groupNum}`);
+      const text = Array.from(ansZone.children).map(b => b.textContent).join('');
+      const fb = document.getElementById(`feedback-scramble-${groupNum}`);
+
+      if (text === targetSentence) {
+        playTone('correct');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = `🎉 重組成功！「${targetSentence}」語意非常通順！`;
+        addScore('scramble-' + groupNum, 10);
+      } else {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = `💡 順序還不太對喔！目前排成：「${text || '（尚未點擊語塊）'}」，請再試一次！`;
+      }
+    }
+
+    function startVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const fb = document.getElementById('feedback-wall');
+      if (!SpeechRecognition) {
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 您的瀏覽器目前不支援語音辨識，請使用 Chrome / Safari 或直接打字輸入喔！';
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'zh-TW';
+      fb.className = 'feedback-box correct';
+      fb.innerHTML = '🎙️ 請開始說話（請包含「成群結隊」造句）……';
+      recognition.onresult = event => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('student-sentence').value = transcript;
+        fb.innerHTML = `✅ 語音辨識完成：「${transcript}」，確認無誤後可點選傳送至展示牆！`;
+      };
+      recognition.start();
+    }
+
+    function postToWall() {
+      const name = document.getElementById('student-name').value.trim() || '匿名小作家';
+      const sentence = document.getElementById('student-sentence').value.trim();
+      const fb = document.getElementById('feedback-wall');
+
+      if (!sentence.includes('成群結隊')) {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 造句裡別忘了要使用本課語詞「成群結隊」喔！';
+        return;
+      }
+
+      playTone('correct');
+      const wall = document.getElementById('sentence-wall');
+      const note = document.createElement('div');
+      note.className = 'sticky-note';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'student-tag';
+      nameDiv.textContent = '📌 ' + name;
+
+      const contentDiv = document.createElement('div');
+      contentDiv.textContent = sentence;
+
+      note.appendChild(nameDiv);
+      note.appendChild(contentDiv);
+      wall.prepend(note);
+
+      fb.className = 'feedback-box correct';
+      fb.innerHTML = '🎉 造句已成功張貼到展示牆！';
+      document.getElementById('student-sentence').value = '';
+      addScore('wall-post', 10);
+    }
+
+    /* =========================================================
+       第二關：閱讀小偵探（椰子樹推論＋四面向配對）
+       ========================================================= */
+    function checkCoconut(btn, isCorrect) {
+      btn.parentElement.querySelectorAll('.option-btn').forEach(b => b.classList.remove('correct', 'wrong'));
+      const fb = document.getElementById('feedback-coconut');
+      if (isCorrect) {
+        playTone('correct');
+        btn.classList.add('correct');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '🎉 推論正確！作者把椰子樹擬人化，緊緊拉住春天，代表「美麗島整年都像春天一樣暖和」！';
+        addScore('coconut', 10);
+      } else {
+        playTone('wrong');
+        btn.classList.add('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 再推論看看：詩句說「拉住春天，不讓春天離開」，代表島上的氣候整年都怎麼樣呢？';
+      }
+    }
+
+    let selectedLeftItem = null;
+    let matchedCount = 0;
+
+    function selectMatchLeft(el) {
+      if (el.classList.contains('paired')) return;
+      document.querySelectorAll('#match-left .match-item').forEach(i => i.classList.remove('active'));
+      selectedLeftItem = el;
+      el.classList.add('active');
+    }
+
+    function selectMatchRight(el) {
+      if (el.classList.contains('paired') || !selectedLeftItem) return;
+      const fb = document.getElementById('feedback-matching');
+
+      if (selectedLeftItem.dataset.key === el.dataset.key) {
+        playTone('correct');
+        selectedLeftItem.classList.remove('active');
+        selectedLeftItem.classList.add('paired');
+        el.classList.add('paired');
+        el.innerHTML = `✅ ${selectedLeftItem.textContent} ➔ ${el.textContent}`;
+        selectedLeftItem = null;
+        matchedCount++;
+        addScore('match-' + matchedCount, 5);
+
+        if (matchedCount === 4) {
+          fb.className = 'feedback-box correct';
+          fb.innerHTML = '🌟 太厲害了！【環境、氣候、居民、物產】四面向全部配對完成！';
+        } else {
+          fb.className = 'feedback-box correct';
+          fb.innerHTML = `👍 配對正確！目前已完成 ${matchedCount} / 4 組。`;
+        }
+      } else {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 這項描寫對應的特色面向不太對喔，請再仔細讀一讀關鍵字！';
+      }
+    }
+
+    /* =========================================================
+       終極魔王關：《七彩的虹》動態描寫與堆疊語詞
+       ========================================================= */
+    function checkDynamicWords() {
+      const checked = Array.from(document.querySelectorAll('#dynamic-checkboxes input:checked')).map(i => i.value);
+      const fb = document.getElementById('feedback-dynamic');
+
+      const isCorrect = checked.length === 2 && checked.includes('1') && checked.includes('5');
+      if (isCorrect) {
+        playTone('correct');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '🎉 魔王關子題 A 破關！「☑️ 飛跑著的烏雲」（有「飛跑著」的動作）與「☑️ 飛滿了塵土的天空」（有「飛滿了」的動態畫面）都是動態描寫！其餘三項皆為靜態形容或位置。';
+        addScore('boss-a', 15);
+      } else {
+        playTone('wrong');
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 提示：找找看哪兩個選項裡有「飛跑著」、「飛滿了」這種讓畫面動起來的動作語詞？（共有 2 個正確答案）';
+      }
+    }
+
+    let foundTarget1 = false;
+    let foundTarget2 = false;
+
+    function clickPoemLine(lineEl, lineType) {
+      const fb = document.getElementById('feedback-poem-click');
+
+      if (lineType === 'target1') {
+        playTone('correct');
+        lineEl.classList.add('underlined-correct');
+        foundTarget1 = true;
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '🎯 成功找到目標句 1！「也洗淨了<strong>悶熱的</strong><strong>飛滿了塵土的</strong>天空。」➔ 堆疊了「悶熱的」＋「飛滿了塵土的」來形容天空！' +
+          (foundTarget2 ? '<br>🏆 恭喜完成所有主要目標句！' : '<br>👉 還有 1 句描寫「虹」的主要目標句，快找找看！');
+        addScore('poem-t1', 10);
+      } else if (lineType === 'target2') {
+        playTone('correct');
+        lineEl.classList.add('underlined-correct');
+        foundTarget2 = true;
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '🎯 成功找到目標句 2！「那就是<strong>掛在明亮的雨後的天空中的</strong>／<strong>紅、橙、黃、綠、青、藍、紫的</strong><strong>七彩的</strong>虹。」➔ 層層堆疊語詞來形容美麗的彩虹！' +
+          (foundTarget1 ? '<br>🏆 恭喜完成所有主要目標句！' : '<br>👉 還有 1 句描寫「天空」的主要目標句，快找找看！');
+        addScore('poem-t2', 10);
+      } else if (lineType === 'bonus') {
+        playTone('correct');
+        lineEl.classList.add('underlined-bonus');
+        fb.className = 'feedback-box correct';
+        fb.innerHTML = '💎 哇！你找到了【進階加分句】！「就又來洗淨了<strong>清道夫永遠也掃不完的</strong>城市」，加長了修飾語讓城市原本的模樣更具體！（額外加 5 分！）';
+        addScore('poem-bonus', 5);
+      } else {
+        playTone('wrong');
+        lineEl.classList.add('underlined-wrong');
+        setTimeout(() => lineEl.classList.remove('underlined-wrong'), 900);
+        fb.className = 'feedback-box wrong';
+        fb.innerHTML = '💡 這一句沒有連續堆疊多個「……的」來形容同一個事物喔！請找找看描寫「天空」或「七彩的虹」的長詩句！';
+      }
+    }
+  </script>
+</body>
+</html>
